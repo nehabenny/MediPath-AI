@@ -1,30 +1,36 @@
 import streamlit as st
 import google.generativeai as genai
 import os
+from dotenv import load_dotenv
 
-# 1. Configuration
-st.set_page_config(page_title="Medi-Path AI", page_icon="🏥")
-genai.configure(api_key="YOUR_API_KEY_HERE") # Use environment variables later
-model = genai.GenerativeModel('gemini-1.5-flash')
+# 1. Setup
+load_dotenv()
+api_key = os.getenv("GEMINI_API_KEY")
 
-# 2. UI Elements
-st.title("🏥 Medi-Path AI")
-st.subheader("Post-Discharge Patient Assistant")
+if not api_key:
+    st.error("API Key missing! Check your .env file.")
+else:
+    genai.configure(api_key=api_key)
+    # Changed to a valid model name
+    model = genai.GenerativeModel('gemini-2.5-flash')
 
-query = st.text_area("How are you feeling today?", placeholder="e.g., I have a slight fever but my incision looks clean.")
+    # 2. UI
+    st.title("🏥 Medi-Path AI")
+    st.subheader("Post-Discharge Patient Assistant")
 
-if st.button("Analyze Symptoms"):
-    if query:
-        # 3. Dual-Path Logic (Safety Filter)
-        emergency_keywords = ["chest pain", "shortness of breath", "heavy bleeding", "unconscious"]
-        
-        if any(word in query.lower() for word in emergency_keywords):
-            st.error("🚨 EMERGENCY DETECTED: Please contact emergency services immediately.")
-        else:
-            # 4. Generative AI Path
-            with st.spinner("Analyzing recovery data..."):
-                prompt = f"Patient Query: {query}. Provide supportive recovery advice based on standard post-operative care."
-                response = model.generate_content(prompt)
-                st.info(response.text)
-    else:
-        st.warning("Please enter your symptoms.")
+    query = st.text_area("How are you feeling today?", placeholder="e.g., I have a slight fever...")
+
+    if st.button("Analyze Symptoms"):
+        if query:
+            emergency_keywords = ["chest pain", "shortness of breath", "heavy bleeding", "unconscious"]
+            
+            if any(word in query.lower() for word in emergency_keywords):
+                st.error("🚨 EMERGENCY DETECTED: Please contact emergency services immediately.")
+            else:
+                with st.spinner("Analyzing..."):
+                    try:
+                        prompt = f"Patient Query: {query}. Provide supportive recovery advice based on standard post-operative care."
+                        response = model.generate_content(prompt)
+                        st.info(response.text)
+                    except Exception as e:
+                        st.error(f"An error occurred: {e}")
